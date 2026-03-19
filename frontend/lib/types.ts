@@ -55,3 +55,13 @@ export interface TokenResponse {
   refresh_token: string;
   token_type: string;
 }
+
+export interface DashboardStats {
+  framework_compliance: Record<string, number | null>;
+  overdue_assessments: Array<{
+    id: string;
+    system_id: string;
+    due_date: string;
+    status: string;
+  }>;
+}

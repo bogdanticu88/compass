@@ -68,4 +68,7 @@ export const api = {
         `/findings${assessmentId ? `?assessment_id=${assessmentId}` : ""}`
       ),
   },
+  dashboard: {
+    stats: () => request<import("./types").DashboardStats>("/dashboard"),
+  },
 };
