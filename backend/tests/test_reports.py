@@ -70,6 +70,8 @@ async def test_json_report_shape(report_setup):
     assert "frameworks" in data
     assert "controls" in data
     assert "findings" in data
+    assert "status" in data
+    assert "due_date" in data
 
 
 @pytest.mark.asyncio
@@ -82,6 +84,7 @@ async def test_pdf_report_returns_pdf_content_type(report_setup):
     )
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "application/pdf"
+    assert "attachment" in resp.headers.get("content-disposition", "")
 
 
 @pytest.mark.asyncio
