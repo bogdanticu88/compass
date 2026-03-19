@@ -71,4 +71,11 @@ export const api = {
   dashboard: {
     stats: () => request<import("./types").DashboardStats>("/dashboard"),
   },
+  evidence: {
+    upload: (data: { assessment_id: string; control_id: string; payload: string }) =>
+      request<{ id: string; status: string }>("/evidence", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+  },
 };

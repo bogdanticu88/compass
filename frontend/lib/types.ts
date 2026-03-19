@@ -34,6 +34,8 @@ export interface Control {
   title: string;
   requirement: string;
   evidence_status: "collected" | "stale" | "missing";
+  evidence_payload: string | null;
+  evidence_source: string | null;
 }
 
 export interface AssessmentDetail extends Assessment {
