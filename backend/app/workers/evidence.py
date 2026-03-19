@@ -1,9 +1,13 @@
+import logging
+
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.connectors.base import CONNECTOR_REGISTRY
 from app.models.connector_config import ConnectorConfig
 from app.services.evidence import save_evidence_items
+
+logger = logging.getLogger(__name__)
 
 
 async def collect_evidence_job(ctx: dict, assessment_id: str, system_id: str) -> None:
@@ -26,9 +30,14 @@ async def collect_evidence_job(ctx: dict, assessment_id: str, system_id: str) ->
     for cfg in configs:
         connector_cls = CONNECTOR_REGISTRY.get(cfg.connector_name)
         if connector_cls is None:
+            logger.warning("No connector registered for '%s', skipping", cfg.connector_name)
             continue
-        connector = connector_cls()
-        items = await connector.collect(system_id, cfg.config)
+        try:
+            connector = connector_cls()
+            items = await connector.collect(system_id, cfg.config)
+        except Exception:
+            logger.exception("Connector '%s' failed for system %s", cfg.connector_name, system_id)
+            continue
         if items:
             async with SessionMaker() as db:
                 await save_evidence_items(db, assessment_id, cfg.connector_name, items)
