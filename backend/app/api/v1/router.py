@@ -10,8 +10,10 @@ from app.api.v1.connectors import router as connectors_router
 from app.api.v1.evidence import router as evidence_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.reports import router as reports_router
+from app.api.v1.setup import router as setup_router
 
 api_router = APIRouter()
+api_router.include_router(setup_router)
 api_router.include_router(auth_router)
 api_router.include_router(systems_router)
 api_router.include_router(assessments_router)
