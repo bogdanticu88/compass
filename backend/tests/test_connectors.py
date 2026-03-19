@@ -280,3 +280,103 @@ async def test_jira_missing_config_returns_empty():
     connector = JiraConnector()
     items = await connector.collect("system-1", {})
     assert items == []
+
+
+from app.connectors.servicenow import ServiceNowConnector
+
+
+def test_servicenow_registered():
+    assert "servicenow" in CONNECTOR_REGISTRY
+
+
+def test_servicenow_evidence_types():
+    c = ServiceNowConnector()
+    assert "audit_logs" in c.evidence_types
+    assert "incident_records" in c.evidence_types
+    assert "model_versioning_records" in c.evidence_types
+
+
+@pytest.mark.asyncio
+async def test_servicenow_returns_evidence_for_matching_controls():
+    change_response = {
+        "result": [
+            {"number": "CHG001", "short_description": "Deploy AI model v2",
+             "state": "closed", "opened_at": "2026-01-01 00:00:00"},
+        ]
+    }
+    incident_response = {
+        "result": [
+            {"number": "INC001", "short_description": "Model accuracy degradation",
+             "state": "resolved", "opened_at": "2026-01-10 00:00:00"},
+        ]
+    }
+    risk_response = {
+        "result": [
+            {"name": "Bias Risk", "short_description": "Potential bias in training data",
+             "risk_rating": "high", "opened_at": "2026-01-05 00:00:00"},
+        ]
+    }
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(side_effect=[
+        make_mock_response(change_response),
+        make_mock_response(incident_response),
+        make_mock_response(risk_response),
+    ])
+
+    mock_controls = [
+        MagicMock(id="c1", evidence_types=["audit_logs"]),
+        MagicMock(id="c2", evidence_types=["incident_records"]),
+        MagicMock(id="c3", evidence_types=["model_versioning_records"]),
+        MagicMock(id="c4", evidence_types=["bias_test_reports"]),  # not covered
+    ]
+
+    connector = ServiceNowConnector()
+    with patch("app.connectors.servicenow.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.connectors.servicenow.get_controls_for_types", return_value=mock_controls):
+            items = await connector.collect(
+                "system-1",
+                {
+                    "instance_url": "https://myinstance.service-now.com",
+                    "username": "admin",
+                    "password": "password",
+                },
+            )
+
+    covered_ids = {item.control_id for item in items}
+    assert "c1" in covered_ids
+    assert "c2" in covered_ids
+    assert "c3" in covered_ids
+    assert "c4" not in covered_ids
+    assert all(item.source == "servicenow" for item in items)
+
+
+@pytest.mark.asyncio
+async def test_servicenow_handles_api_error_gracefully():
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(side_effect=Exception("Connection refused"))
+
+    connector = ServiceNowConnector()
+    with patch("app.connectors.servicenow.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.connectors.servicenow.get_controls_for_types", return_value=[]):
+            items = await connector.collect(
+                "system-1",
+                {
+                    "instance_url": "https://myinstance.service-now.com",
+                    "username": "admin",
+                    "password": "password",
+                },
+            )
+
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_servicenow_missing_config_returns_empty():
+    connector = ServiceNowConnector()
+    items = await connector.collect("system-1", {})
+    assert items == []
