@@ -1,0 +1,64 @@
+image:
+  registry: ghcr.io
+  pullPolicy: IfNotPresent
+
+api:
+  image: bogdanticu88/compass-api
+  tag: latest
+  replicaCount: 2
+  port: 8000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+
+worker:
+  image: bogdanticu88/compass-worker
+  tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+web:
+  image: bogdanticu88/compass-web
+  tag: latest
+  replicaCount: 1
+  port: 3000
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: compass.example.com
+  tls: false
+
+secrets:
+  secretKey: "change-me-in-production"
+  jwtSecret: "change-me-in-production"
+  postgresPassword: "compass"
+
+postgresql:
+  enabled: true
+  auth:
+    database: compass
+    username: compass
+    password: compass
+
+redis:
+  enabled: true
+  auth:
+    enabled: false
