@@ -71,6 +71,21 @@ export default function AssessmentDetailPage({
     }
   }
 
+  async function handleDownload(format: "json" | "pdf") {
+    const token = typeof window !== "undefined" ? localStorage.getItem("compass_access_token") : null;
+    const url = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/assessments/${id}/report?format=${format}`;
+    const res = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `compass-report-${id}.${format}`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   async function handleEvidenceSave(controlId: string) {
     const payload = evidenceInputs[controlId]?.trim();
     if (!payload) return;
@@ -134,6 +149,12 @@ export default function AssessmentDetailPage({
             )}
             <Button variant="outline" onClick={handleRecollect} disabled={recollecting}>
               {recollecting ? "Collecting…" : "Re-collect evidence"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleDownload("json")}>
+              Export JSON
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleDownload("pdf")}>
+              Export PDF
             </Button>
           </div>
         </div>

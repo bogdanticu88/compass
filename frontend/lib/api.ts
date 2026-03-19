@@ -78,4 +78,8 @@ export const api = {
         body: JSON.stringify(data),
       }),
   },
+  reports: {
+    downloadUrl: (id: string, format: "json" | "pdf") =>
+      `${BASE}/api/v1/assessments/${id}/report?format=${format}`,
+  },
 };
