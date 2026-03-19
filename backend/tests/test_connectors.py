@@ -181,3 +181,102 @@ async def test_azure_devops_missing_config_returns_empty():
     connector = AzureDevOpsConnector()
     items = await connector.collect("system-1", {})  # no org/project/token
     assert items == []
+
+
+from app.connectors.jira import JiraConnector
+
+
+def test_jira_registered():
+    assert "jira" in CONNECTOR_REGISTRY
+
+
+def test_jira_evidence_types():
+    c = JiraConnector()
+    assert "audit_logs" in c.evidence_types
+    assert "incident_records" in c.evidence_types
+
+
+@pytest.mark.asyncio
+async def test_jira_returns_evidence_for_matching_controls():
+    search_response = {
+        "issues": [
+            {
+                "key": "RISK-1",
+                "fields": {
+                    "summary": "Risk assessment for model deployment",
+                    "status": {"name": "Open"},
+                    "issuetype": {"name": "Story"},
+                    "created": "2026-01-01T00:00:00.000+0000",
+                },
+            },
+            {
+                "key": "INC-5",
+                "fields": {
+                    "summary": "Model drift detected in production",
+                    "status": {"name": "In Progress"},
+                    "issuetype": {"name": "Bug"},
+                    "created": "2026-01-15T00:00:00.000+0000",
+                },
+            },
+        ]
+    }
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(return_value=make_mock_response(search_response))
+
+    mock_controls = [
+        MagicMock(id="c1", evidence_types=["audit_logs"]),
+        MagicMock(id="c2", evidence_types=["incident_records"]),
+        MagicMock(id="c3", evidence_types=["risk_register"]),  # not covered by Jira
+    ]
+
+    connector = JiraConnector()
+    with patch("app.connectors.jira.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.connectors.jira.get_controls_for_types", return_value=mock_controls):
+            items = await connector.collect(
+                "system-1",
+                {
+                    "base_url": "https://myorg.atlassian.net",
+                    "email": "user@example.com",
+                    "api_token": "jira_token",
+                    "project_key": "RISK",
+                },
+            )
+
+    covered_ids = {item.control_id for item in items}
+    assert "c1" in covered_ids
+    assert "c2" in covered_ids
+    assert "c3" not in covered_ids
+    assert all(item.source == "jira" for item in items)
+
+
+@pytest.mark.asyncio
+async def test_jira_handles_api_error_gracefully():
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(side_effect=Exception("Connection refused"))
+
+    connector = JiraConnector()
+    with patch("app.connectors.jira.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.connectors.jira.get_controls_for_types", return_value=[]):
+            items = await connector.collect(
+                "system-1",
+                {
+                    "base_url": "https://myorg.atlassian.net",
+                    "email": "user@example.com",
+                    "api_token": "jira_token",
+                    "project_key": "RISK",
+                },
+            )
+
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_jira_missing_config_returns_empty():
+    connector = JiraConnector()
+    items = await connector.collect("system-1", {})
+    assert items == []
