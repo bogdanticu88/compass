@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, getToken } from "@/lib/auth";
 import type { AssessmentDetail } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ export default function AssessmentDetailPage({
   const [recollecting, setRecollecting] = useState(false);
   const [evidenceInputs, setEvidenceInputs] = useState<Record<string, string>>({});
   const [savingEvidence, setSavingEvidence] = useState<Record<string, boolean>>({});
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -72,12 +73,16 @@ export default function AssessmentDetailPage({
   }
 
   async function handleDownload(format: "json" | "pdf") {
-    const token = typeof window !== "undefined" ? localStorage.getItem("compass_access_token") : null;
-    const url = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/api/v1/assessments/${id}/report?format=${format}`;
+    setDownloadError(null);
+    const token = getToken();
+    const url = api.reports.downloadUrl(id, format);
     const res = await fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      setDownloadError("Failed to download report. Please try again.");
+      return;
+    }
     const blob = await res.blob();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -158,6 +163,10 @@ export default function AssessmentDetailPage({
             </Button>
           </div>
         </div>
+
+        {downloadError && (
+          <p className="text-sm text-red-600">{downloadError}</p>
+        )}
 
         {/* Progress bar */}
         <Card>
