@@ -549,15 +549,14 @@ export async function generateExcel(d: ReportData): Promise<void> {
     ["Open Findings", openFindings.length],
     ["Critical / High", openFindings.filter(f => f.severity === "critical" || f.severity === "high").length],
     ["System Coverage", `${coverageRate}%`],
-    ["Overall Score", stats.overall_score != null ? `${stats.overall_score}%` : "N/A"],
   ];
   const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
   wsSummary["!cols"] = [{ wch: 30 }, { wch: 20 }];
   XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
 
   /* ── Sheet 2: Framework Compliance ── */
-  const fwRows = [["Framework", "Compliance %", "Assessed Assessments"]];
-  for (const [fw, score] of Object.entries(stats.framework_scores ?? {})) {
+  const fwRows: (string | number)[][] = [["Framework", "Compliance %", "Assessed Assessments"]];
+  for (const [fw, score] of Object.entries(stats.framework_compliance ?? {})) {
     const fwAssessments = d.assessments.filter(a => a.frameworks?.includes(fw)).length;
     fwRows.push([FW_LABELS[fw] ?? fw, score != null ? `${Math.round(score * 100)}%` : "N/A", fwAssessments]);
   }

@@ -39,7 +39,7 @@ export default function NewAssessmentPage() {
   const [showAddSystem,  setShowAddSystem]  = useState(false);
   const [sysName,        setSysName]        = useState("");
   const [sysDesc,        setSysDesc]        = useState("");
-  const [sysRisk,        setSysRisk]        = useState("limited");
+  const [sysRisk,        setSysRisk]        = useState<"unacceptable" | "high" | "limited" | "minimal">("limited");
   const [sysBU,          setSysBU]          = useState("");
   const [sysLoading,     setSysLoading]     = useState(false);
   const [sysError,       setSysError]       = useState<string | null>(null);
@@ -178,7 +178,7 @@ export default function NewAssessmentPage() {
                   <label className="text-xs font-medium text-zinc-400">Risk tier <span className="text-red-400">*</span></label>
                   <select
                     value={sysRisk}
-                    onChange={e => setSysRisk(e.target.value)}
+                    onChange={e => setSysRisk(e.target.value as "unacceptable" | "high" | "limited" | "minimal")}
                     className="w-full bg-zinc-950 border border-zinc-700 text-zinc-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 appearance-none"
                   >
                     {RISK_TIERS.map(r => (
