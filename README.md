@@ -342,6 +342,38 @@ All configuration is passed through environment variables. The `.env.example` fi
 
 ---
 
+## Roadmap
+
+### v1.1
+
+These are gaps in the current release that affect day-to-day usability.
+
+**User management UI** — there is no interface for inviting users, changing roles, or deactivating accounts after the initial setup wizard. Currently this has to be done directly via the API. A user management page in the Control Room is the next thing to ship.
+
+**Connector test and status** — the connector configuration page lets you save credentials but gives no feedback on whether they actually work. Adding a "Test connection" button that fires a dry run against the external tool, and showing a last-collected timestamp on each connector, will make the evidence pipeline much easier to operate.
+
+**Audit trail** — there is no record of who updated evidence, who changed a finding status, or when assessments were submitted. For teams that need to show an auditor that a specific person signed off on specific evidence at a specific time, this is a missing piece. An immutable event log per assessment is planned.
+
+**Overdue notifications** — assessments with a due date that has passed are flagged in the Control Room, but nobody gets notified. Email notifications for overdue assessments and approaching deadlines are on the list.
+
+---
+
+### v1.2
+
+These are larger features that require more design work but are the logical next step for teams running Compass at scale.
+
+**Finding assignment and remediation tracking** — right now findings are created and tracked by status, but there is no way to assign a finding to a specific person or set a target remediation date. Adding ownership, due dates, and a comment thread to findings would make Compass usable as a lightweight remediation tracker rather than just an audit record.
+
+**Multi-tenant workspaces** — the current data model has a single shared namespace. Organisations with multiple business units or subsidiaries that need isolated views of their assessments, findings, and reports will need workspace-level separation with scoped roles.
+
+**Assessment templates** — instead of starting every assessment from scratch, teams should be able to define a template for a given system type (for example, a standard template for all customer-facing recommendation models) and create new assessments from it with pre-filled control guidance and suggested evidence sources.
+
+**Connector scheduling** — evidence collection currently runs on demand when an assessor clicks Re-collect. Scheduled automatic collection on a configurable interval would remove the manual step and keep evidence fresher without anyone having to remember to trigger it.
+
+**SSO and LDAP integration** — for enterprise deployments where account management needs to go through an existing identity provider rather than Compass's own auth.
+
+---
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
