@@ -66,6 +66,8 @@ export const api = {
       }),
     recollect: (id: string) =>
       request<{ message: string }>(`/assessments/${id}/recollect`, { method: "POST" }),
+    delete: (id: string) =>
+      request<void>(`/assessments/${id}`, { method: "DELETE" }),
   },
   findings: {
     list: (assessmentId?: string) =>

@@ -8,6 +8,9 @@ from app.database import get_db
 from app.models.assessment import Assessment
 from app.models.user import User
 from app.schemas.assessment import AssessmentCreate, AssessmentRead
+from app.models.assessment_control import AssessmentControl
+from app.models.evidence import Evidence
+from app.models.finding import Finding
 from app.services.assessment import create_assessment, get_assessment_detail, submit_assessment
 from app.services.auth import get_current_user
 
@@ -55,6 +58,27 @@ async def submit(
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     return assessment
+
+
+@router.delete("/{assessment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_assessment(
+    assessment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Assessment).where(Assessment.id == assessment_id))
+    assessment = result.scalar_one_or_none()
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+
+    # delete child rows first to avoid FK violations
+    for model in (Finding, Evidence, AssessmentControl):
+        rows = await db.execute(select(model).where(model.assessment_id == assessment_id))
+        for row in rows.scalars().all():
+            await db.delete(row)
+
+    await db.delete(assessment)
+    await db.commit()
 
 
 @router.post("/{assessment_id}/recollect", status_code=status.HTTP_202_ACCEPTED)
