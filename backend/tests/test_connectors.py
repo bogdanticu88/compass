@@ -460,3 +460,89 @@ async def test_aws_connector_handles_error_gracefully():
         )
 
     assert items == []
+
+
+from app.connectors.azure import AzureConnector
+
+def test_azure_connector_registered():
+    assert "azure" in CONNECTOR_REGISTRY
+
+
+def test_azure_connector_evidence_types():
+    c = AzureConnector()
+    assert "audit_logs" in c.evidence_types
+    assert "monitoring_logs" in c.evidence_types
+
+
+@pytest.mark.asyncio
+async def test_azure_connector_missing_config_returns_empty():
+    connector = AzureConnector()
+    items = await connector.collect("system-1", {})
+    assert items == []
+
+
+@pytest.mark.asyncio
+async def test_azure_connector_returns_evidence_for_matching_controls():
+    token_response = {"access_token": "mock-token", "token_type": "Bearer"}
+    resources_response = {
+        "value": [
+            {"id": "/subscriptions/sub1/resourceGroups/rg1/providers/Microsoft.Compute/virtualMachines/vm1",
+             "name": "vm1", "type": "Microsoft.Compute/virtualMachines", "location": "westeurope"},
+        ]
+    }
+    role_assignments_response = {
+        "value": [
+            {"id": "/subscriptions/sub1/providers/Microsoft.Authorization/roleAssignments/ra1",
+             "properties": {"roleDefinitionId": "/providers/Microsoft.Authorization/roleDefinitions/b24988ac",
+                            "principalId": "user-guid"}},
+        ]
+    }
+    policy_response = {"value": []}
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.post = AsyncMock(return_value=make_mock_response(token_response))
+    mock_client.get = AsyncMock(side_effect=[
+        make_mock_response(resources_response),
+        make_mock_response(role_assignments_response),
+        make_mock_response(policy_response),
+    ])
+
+    mock_controls = [
+        MagicMock(id="c1", evidence_types=["audit_logs"]),
+        MagicMock(id="c2", evidence_types=["monitoring_logs"]),
+    ]
+
+    connector = AzureConnector()
+    with patch("app.connectors.azure.httpx.AsyncClient", return_value=mock_client):
+        with patch("app.connectors.azure.get_controls_for_types", return_value=mock_controls):
+            items = await connector.collect(
+                "system-1",
+                {
+                    "tenant_id": "tenant-123",
+                    "client_id": "client-456",
+                    "client_secret": "secret",
+                    "subscription_id": "sub-789",
+                },
+            )
+
+    assert len(items) > 0
+    assert all(item.source == "azure" for item in items)
+
+
+@pytest.mark.asyncio
+async def test_azure_connector_handles_api_error_gracefully():
+    mock_client = AsyncMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.post = AsyncMock(side_effect=Exception("Connection refused"))
+
+    connector = AzureConnector()
+    with patch("app.connectors.azure.httpx.AsyncClient", return_value=mock_client):
+        items = await connector.collect(
+            "system-1",
+            {"tenant_id": "t", "client_id": "c", "client_secret": "s", "subscription_id": "sub"},
+        )
+
+    assert items == []

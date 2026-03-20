@@ -5,5 +5,6 @@ from app.connectors.azure_devops import AzureDevOpsConnector  # noqa: F401 — s
 from app.connectors.jira import JiraConnector  # noqa: F401 — side-effect: registers connector
 from app.connectors.servicenow import ServiceNowConnector  # noqa: F401 — side-effect: registers connector
 from app.connectors.aws import AWSConnector  # noqa: F401 — side-effect: registers connector
+from app.connectors.azure import AzureConnector  # noqa: F401 — side-effect: registers connector
 
-__all__ = ["BaseConnector", "EvidenceItem", "CONNECTOR_REGISTRY", "ManualConnector", "GitHubConnector", "AzureDevOpsConnector", "JiraConnector", "ServiceNowConnector", "AWSConnector"]
+__all__ = ["BaseConnector", "EvidenceItem", "CONNECTOR_REGISTRY", "ManualConnector", "GitHubConnector", "AzureDevOpsConnector", "JiraConnector", "ServiceNowConnector", "AWSConnector", "AzureConnector"]
