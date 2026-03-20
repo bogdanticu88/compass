@@ -57,7 +57,9 @@ services:
     command: python -m arq app.workers.main.WorkerSettings
 
   web:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: dev
     env_file: .env
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000

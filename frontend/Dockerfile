@@ -13,6 +13,8 @@ FROM base AS dev
 CMD ["pnpm", "dev"]
 
 FROM base AS builder
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm build
 
 FROM node:20-alpine AS prod

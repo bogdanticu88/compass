@@ -1,0 +1,12 @@
+services:
+  web:
+    build:
+      context: ./frontend
+      target: prod
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+    command: node server.js
+    volumes: []
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
