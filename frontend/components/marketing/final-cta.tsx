@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DemoButton } from "@/components/marketing/demo-modal";
 
 export function FinalCTA() {
   return (
@@ -17,12 +18,7 @@ export function FinalCTA() {
           >
             Get Started
           </Link>
-          <a
-            href="#frameworks"
-            className="border border-zinc-700 hover:border-zinc-500 text-zinc-300 hover:text-zinc-100 px-8 py-3 rounded-lg font-medium transition-colors text-sm w-full sm:w-auto"
-          >
-            Request a Demo
-          </a>
+          <DemoButton className="border border-zinc-700 hover:border-zinc-500 text-zinc-300 hover:text-zinc-100 px-8 py-3 rounded-lg font-medium transition-colors text-sm w-full sm:w-auto" />
         </div>
       </div>
     </section>
