@@ -1,4 +1,3 @@
-![827d0b5c-d327-4dfd-a6a4-920acaa0efd5](https://github.com/user-attachments/assets/2134e485-bfd3-47fa-8a6a-5e06be508a22)
 
 # Compass
 
