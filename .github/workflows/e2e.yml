@@ -32,6 +32,10 @@ jobs:
             curl -sf http://localhost:3000 && break || sleep 5
           done
 
+      - name: Debug API logs
+        if: always()
+        run: docker compose logs api | tail -50
+
       - name: Seed database
         run: docker compose exec -T api python -m app.scripts.seed
 
