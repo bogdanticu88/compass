@@ -10,9 +10,9 @@ import type { AISystem, Assessment, Finding, DashboardStats } from "@/lib/types"
 import {
   LayoutDashboard, LogOut, ChevronLeft, AlertTriangle,
   TrendingUp, Shield, Activity, CheckCircle, Clock,
-  XCircle, BarChart3, Layers, Calendar, Download, FileText, Code2,
+  XCircle, BarChart3, Layers, Calendar, Download, FileText, Code2, Table,
 } from "lucide-react";
-import { generateMarkdown, generateHTML, downloadFile } from "@/lib/export-report";
+import { generateMarkdown, generateHTML, generateExcel, downloadFile } from "@/lib/export-report";
 
 /* ── colour maps ──────────────────────────────────── */
 const RISK_PILL: Record<string, string> = {
@@ -157,6 +157,13 @@ export default function DashboardPage() {
     setExportOpen(false);
   }
 
+  async function handleExportExcel() {
+    if (!stats) return;
+    const data = { systems, assessments, findings, stats, generatedAt: new Date() };
+    await generateExcel(data);
+    setExportOpen(false);
+  }
+
   /* ── derived values ─────────────────────────────── */
   const activeSystems   = systems.filter(s => s.status === "active");
   const openFindings    = findings.filter(f => f.status === "open");
@@ -280,10 +287,17 @@ export default function DashboardPage() {
                   </button>
                   <button
                     onClick={() => handleExport("md")}
-                    className="w-full flex items-center gap-2.5 px-3 pb-3 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
                   >
                     <FileText className="w-4 h-4 text-violet-400" />
                     Markdown report
+                  </button>
+                  <button
+                    onClick={handleExportExcel}
+                    className="w-full flex items-center gap-2.5 px-3 pb-3 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                  >
+                    <Table className="w-4 h-4 text-green-400" />
+                    Excel workbook
                   </button>
                 </div>
               </>

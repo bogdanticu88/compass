@@ -5,6 +5,7 @@ const FW_LABELS: Record<string, string> = {
   dora: "DORA",
   iso_42001: "ISO 42001",
   nist_ai_rmf: "NIST AI RMF",
+  gdpr: "GDPR",
 };
 
 interface ReportData {
@@ -513,6 +514,118 @@ export function downloadFile(content: string, filename: string, mime: string) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ── Excel export (.xlsx) ─────────────────────────── */
+export async function generateExcel(d: ReportData): Promise<void> {
+  const XLSX = await import("xlsx");
+  const { stats, systemById, openFindings, coverageRate } = (() => {
+    const systemById = Object.fromEntries(d.systems.map(s => [s.id, s]));
+    const openFindings = d.findings.filter(f => f.status === "open");
+    const assessedSystemIds = new Set(d.assessments.map(a => a.system_id));
+    const activeSystems = d.systems.filter(s => s.status === "active");
+    const coverageRate = activeSystems.length
+      ? Math.round((activeSystems.filter(s => assessedSystemIds.has(s.id)).length / activeSystems.length) * 100)
+      : 0;
+    return { stats: d.stats, systemById, openFindings, coverageRate };
+  })();
+
+  const wb = XLSX.utils.book_new();
+
+  /* ── Sheet 1: Summary ── */
+  const summaryRows = [
+    ["Compass AI Governance — Control Room Report"],
+    ["Generated", d.generatedAt.toLocaleString()],
+    [],
+    ["Metric", "Value"],
+    ["Total AI Systems", d.systems.length],
+    ["Active Systems", d.systems.filter(s => s.status === "active").length],
+    ["Total Assessments", d.assessments.length],
+    ["Draft", d.assessments.filter(a => a.status === "draft").length],
+    ["In Review", d.assessments.filter(a => a.status === "in_review").length],
+    ["Complete", d.assessments.filter(a => a.status === "complete").length],
+    ["Open Findings", openFindings.length],
+    ["Critical / High", openFindings.filter(f => f.severity === "critical" || f.severity === "high").length],
+    ["System Coverage", `${coverageRate}%`],
+    ["Overall Score", stats.overall_score != null ? `${stats.overall_score}%` : "N/A"],
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary["!cols"] = [{ wch: 30 }, { wch: 20 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+
+  /* ── Sheet 2: Framework Compliance ── */
+  const fwRows = [["Framework", "Compliance %", "Assessed Assessments"]];
+  for (const [fw, score] of Object.entries(stats.framework_scores ?? {})) {
+    const fwAssessments = d.assessments.filter(a => a.frameworks?.includes(fw)).length;
+    fwRows.push([FW_LABELS[fw] ?? fw, score != null ? `${Math.round(score * 100)}%` : "N/A", fwAssessments]);
+  }
+  const wsFw = XLSX.utils.aoa_to_sheet(fwRows);
+  wsFw["!cols"] = [{ wch: 20 }, { wch: 18 }, { wch: 22 }];
+  XLSX.utils.book_append_sheet(wb, wsFw, "Framework Compliance");
+
+  /* ── Sheet 3: Systems ── */
+  const sysRows = [["Name", "Risk Tier", "Status", "Business Unit", "Description"]];
+  for (const s of d.systems) {
+    sysRows.push([s.name, s.risk_tier ?? "", s.status ?? "", s.business_unit ?? "", s.description ?? ""]);
+  }
+  const wsSys = XLSX.utils.aoa_to_sheet(sysRows);
+  wsSys["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 20 }, { wch: 50 }];
+  XLSX.utils.book_append_sheet(wb, wsSys, "AI Systems");
+
+  /* ── Sheet 4: Assessments ── */
+  const assessRows = [["System", "Frameworks", "Status", "Due Date", "Assessment ID"]];
+  for (const a of d.assessments) {
+    const sys = systemById[a.system_id];
+    assessRows.push([
+      sys?.name ?? a.system_id,
+      (a.frameworks ?? []).map((f: string) => FW_LABELS[f] ?? f).join(", "),
+      a.status,
+      a.due_date ?? "",
+      a.id,
+    ]);
+  }
+  const wsAssess = XLSX.utils.aoa_to_sheet(assessRows);
+  wsAssess["!cols"] = [{ wch: 28 }, { wch: 40 }, { wch: 12 }, { wch: 14 }, { wch: 38 }];
+  XLSX.utils.book_append_sheet(wb, wsAssess, "Assessments");
+
+  /* ── Sheet 5: Open Findings ── */
+  const findRows = [["System", "Severity", "Description", "Remediation", "Status"]];
+  for (const f of openFindings) {
+    const sys = systemById[d.assessments.find(a => a.id === f.assessment_id)?.system_id ?? ""];
+    findRows.push([
+      sys?.name ?? "",
+      f.severity,
+      f.description,
+      f.remediation_task ?? "",
+      f.status,
+    ]);
+  }
+  const wsFind = XLSX.utils.aoa_to_sheet(findRows);
+  wsFind["!cols"] = [{ wch: 28 }, { wch: 12 }, { wch: 60 }, { wch: 40 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, wsFind, "Open Findings");
+
+  /* ── Sheet 6: Deadlines ── */
+  const now = new Date();
+  const deadlineRows = [["System", "Status", "Due Date", "Days Remaining"]];
+  for (const a of d.assessments.filter(a => a.due_date && a.status !== "complete")) {
+    const sys = systemById[a.system_id];
+    const due = new Date(a.due_date!);
+    const days = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    deadlineRows.push([sys?.name ?? a.system_id, a.status, a.due_date!, days < 0 ? `OVERDUE (${Math.abs(days)}d)` : `${days}d`]);
+  }
+  const wsDeadlines = XLSX.utils.aoa_to_sheet(deadlineRows);
+  wsDeadlines["!cols"] = [{ wch: 28 }, { wch: 12 }, { wch: 14 }, { wch: 18 }];
+  XLSX.utils.book_append_sheet(wb, wsDeadlines, "Deadlines");
+
+  /* ── write and download ── */
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `compass-report-${d.generatedAt.toISOString().slice(0, 10)}.xlsx`;
   a.click();
   URL.revokeObjectURL(url);
 }
