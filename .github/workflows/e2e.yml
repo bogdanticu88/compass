@@ -1,0 +1,54 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start stack
+        run: |
+          cp .env.example .env
+          echo "SECRET_KEY=ci-secret-key-32-chars-minimum-x" >> .env
+          echo "JWT_SECRET=ci-jwt-secret-32-chars-minimum-xx" >> .env
+          docker compose up -d --build
+          sleep 30
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:8000/health && break || sleep 5
+          done
+
+      - name: Wait for frontend
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:3000 && break || sleep 5
+          done
+
+      - name: Seed database
+        run: docker compose exec -T api python -m app.scripts.seed
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: npm ci && npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: e2e
+        run: npm test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
