@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, clearToken } from "@/lib/auth";
 import type { AISystem, Assessment, Finding, DashboardStats } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const RISK_COLORS: Record<string, string> = {
   unacceptable: "bg-red-600 text-white",
@@ -69,9 +70,17 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 p-8">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Control Room</h1>
-          <p className="text-slate-500 mt-1">AI Governance Portfolio</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Control Room</h1>
+            <p className="text-slate-500 mt-1">AI Governance Portfolio</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => { clearToken(); router.push("/login"); }}
+          >
+            Sign Out
+          </Button>
         </div>
 
         {/* Summary cards */}
